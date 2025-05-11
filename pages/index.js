@@ -1,15 +1,16 @@
-// index.js (volume sort + follow list sidebar)
+// index.js (with 🔥 Volatility + ⚡ Momentum indicators)
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 
 export default function Home() {
   const [coins, setCoins] = useState([]);
   const [displayCoins, setDisplayCoins] = useState([]);
-  const [lowPriceHighVolumeCoins, setLowPriceHighVolumeCoins] = useState([]);
   const [followedCoins, setFollowedCoins] = useState([]);
   const priceRefs = useRef({});
   const base10s = useRef({});
-  const base10m = useRef({});
+  const base30s = useRef({});
+  const base60s = useRef({});
+  const volatilityTrack = useRef({});
   const base15mVolume = useRef({});
   const audioRef = useRef(null);
 
@@ -41,7 +42,15 @@ export default function Home() {
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.data && msg.data.s && msg.data.p) {
-        priceRefs.current[msg.data.s] = parseFloat(msg.data.p);
+        const price = parseFloat(msg.data.p);
+        const symbol = msg.data.s;
+        priceRefs.current[symbol] = price;
+
+        if (!volatilityTrack.current[symbol]) volatilityTrack.current[symbol] = [];
+        volatilityTrack.current[symbol].push(price);
+        if (volatilityTrack.current[symbol].length > 30) {
+          volatilityTrack.current[symbol].shift();
+        }
       }
     };
     return () => ws.close();
@@ -65,28 +74,38 @@ export default function Home() {
   useEffect(() => {
     const updateEvery10s = setInterval(() => {
       const result = [];
-      const candidates = [];
 
       coins.forEach(coin => {
         const symbol = coin.symbol;
         const current = priceRefs.current[symbol];
         const base10 = base10s.current[symbol];
-        const base10mPrice = base10m.current[symbol];
+        const base30 = base30s.current[symbol];
+        const base60 = base60s.current[symbol];
         const currentVolume = parseFloat(coin.quoteVolume);
         const baseVol = base15mVolume.current[symbol];
 
-        let change10s = null;
-        let change10m = null;
-        let volumeChange = null;
+        let change10s = null, change30s = null, change60s = null, volumeChange = null;
 
-        if (current && base10) {
-          change10s = ((current - base10) / base10) * 100;
+        if (current && base10) change10s = ((current - base10) / base10) * 100;
+        if (current && base30) change30s = ((current - base30) / base30) * 100;
+        if (current && base60) change60s = ((current - base60) / base60) * 100;
+        if (baseVol && currentVolume) volumeChange = ((currentVolume - baseVol) / baseVol) * 100;
+
+        let isHotVolume = volumeChange >= 20;
+
+        let isVolatile = false;
+        const vPrices = volatilityTrack.current[symbol] || [];
+        if (vPrices.length >= 5) {
+          const max = Math.max(...vPrices);
+          const min = Math.min(...vPrices);
+          const avg = vPrices.reduce((a, b) => a + b, 0) / vPrices.length;
+          const spike = ((max - min) / avg) * 100;
+          if (spike >= 1.5) isVolatile = true;
         }
-        if (current && base10mPrice) {
-          change10m = ((current - base10mPrice) / base10mPrice) * 100;
-        }
-        if (baseVol && currentVolume) {
-          volumeChange = ((currentVolume - baseVol) / baseVol) * 100;
+
+        let isMomentum = false;
+        if (change10s > 0 && change30s > change10s && change60s > change30s) {
+          isMomentum = true;
         }
 
         if (current && base10) {
@@ -94,26 +113,20 @@ export default function Home() {
             symbol,
             currentPrice: current.toFixed(4),
             change10s: change10s?.toFixed(2),
-            change10m: change10m?.toFixed(2),
+            change30s: change30s?.toFixed(2),
+            change60s: change60s?.toFixed(2),
             volumeChange: volumeChange?.toFixed(2),
-            isHotVolume: volumeChange >= 20
+            isHotVolume,
+            isVolatile,
+            isMomentum
           });
 
-          if (Math.abs(change10s) >= 3) {
-            audioRef.current?.play();
-          }
-        }
-
-        if (
-          volumeChange >= 30 &&
-          Math.abs(change10m) <= 1.0 &&
-          Math.abs(change10s) <= 1.0
-        ) {
-          candidates.push({ symbol, volumeChange: volumeChange.toFixed(2), change10m: change10m?.toFixed(2) });
+          if (Math.abs(change10s) >= 3) audioRef.current?.play();
         }
 
         if (current) base10s.current[symbol] = current;
-        if (!base10m.current[symbol]) base10m.current[symbol] = current;
+        if (!base30s.current[symbol]) base30s.current[symbol] = current;
+        if (!base60s.current[symbol]) base60s.current[symbol] = current;
       });
 
       const sorted = result.sort((a, b) => {
@@ -123,7 +136,6 @@ export default function Home() {
       });
 
       setDisplayCoins(sorted);
-      setLowPriceHighVolumeCoins(candidates);
     }, 10000);
 
     return () => clearInterval(updateEvery10s);
@@ -135,30 +147,16 @@ export default function Home() {
         <h1 style={{ color: '#00e676', textAlign: 'center' }}>📈 Binance Futures – Realtime Monitor</h1>
         <audio ref={audioRef} src="/alert.mp3" />
 
-        {lowPriceHighVolumeCoins.length > 0 && (
-          <div style={{ maxWidth: 900, margin: '20px auto', background: '#1e1e1e', padding: 20, borderRadius: 12 }}>
-            <h2 style={{ color: '#ffa726' }}>🟡 Hacmi Artmış Ama Fiyatı Patlamamış Coinler</h2>
-            <ul>
-              {lowPriceHighVolumeCoins.map((c) => (
-                <li key={c.symbol}>
-                  <a href={`https://www.binance.com/en/futures/${c.symbol}`} target="_blank" rel="noreferrer" style={{ color: '#00bcd4' }}>
-                    {c.symbol}
-                  </a> – Volume +{c.volumeChange}%, Price +{c.change10m}%
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         <div style={{ maxWidth: 900, margin: '0 auto', background: '#1e1e1e', padding: 20, borderRadius: 12 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #444' }}>
                 <th align="left">Coin</th>
                 <th align="left">Price</th>
-                <th align="left">Change (10s)</th>
-                <th align="left">Change (10m)</th>
-                <th align="left">Volume Δ (15m)</th>
+                <th align="left">Δ10s</th>
+                <th align="left">Δ30s</th>
+                <th align="left">Δ60s</th>
+                <th align="left">Volume Δ</th>
                 <th align="left">Follow</th>
               </tr>
             </thead>
@@ -171,10 +169,13 @@ export default function Home() {
                     color: Math.abs(coin.change10s) >= 3 ? (coin.change10s > 0 ? '#00e676' : '#ff5252') : '#ccc'
                   }}
                 >
-                  <td>{coin.symbol}</td>
+                  <td>
+                    {coin.symbol} {coin.isVolatile ? '🔥' : ''} {coin.isMomentum ? '⚡' : ''}
+                  </td>
                   <td>{coin.currentPrice}</td>
                   <td>{coin.change10s}%</td>
-                  <td>{coin.change10m || '–'}%</td>
+                  <td>{coin.change30s || '–'}%</td>
+                  <td>{coin.change60s || '–'}%</td>
                   <td>{coin.volumeChange || '–'}%</td>
                   <td>
                     <button onClick={() => toggleFollow(coin.symbol)} style={{ cursor: 'pointer' }}>
