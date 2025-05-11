@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const getTopCoins = async () => {
+const getTopFuturesCoins = async () => {
   try {
     const response = await axios.get("https://fapi.binance.com/fapi/v1/ticker/24hr");
     const coins = response.data;
@@ -12,7 +12,7 @@ const getTopCoins = async () => {
     
     return topCoins;
   } catch (error) {
-    console.error('Error fetching top coins:', error);
+    console.error('Error fetching top futures coins:', error);
     return [];
   }
 };
@@ -22,19 +22,19 @@ export default function Home() {
   const [ws, setWs] = useState(null);
 
   useEffect(() => {
-    const fetchTopCoins = async () => {
-      const topCoins = await getTopCoins();
+    const fetchTopFuturesCoins = async () => {
+      const topCoins = await getTopFuturesCoins();
       setCoins(topCoins);
     };
 
-    fetchTopCoins();
+    fetchTopFuturesCoins();
 
     const webSocket = new WebSocket('wss://fstream.binance.com/ws');
 
     webSocket.onopen = () => {
       console.log('WebSocket connection established');
       // Subscribe to the ticker updates for the coins we're displaying
-      const coinSymbols = coins.map(coin => coin.symbol.toLowerCase() + '@ticker');
+      const coinSymbols = coins.map(coin => `${coin.symbol.toLowerCase()}@ticker`);
       webSocket.send(JSON.stringify({ method: 'SUBSCRIBE', params: [...coinSymbols], id: 1 }));
     };
 
@@ -42,7 +42,7 @@ export default function Home() {
       const msg = JSON.parse(event.data);
 
       if (msg.e === 'ticker') {
-        // Update specific coin data
+        // Update specific coin data if available
         setCoins(coins => {
           return coins.map(coin => {
             if (coin.symbol === msg.s) {
@@ -81,7 +81,7 @@ export default function Home() {
           ))}
         </ul>
       ) : (
-        <p>Loading top coins...</p>
+        <p>Loading top futures coins...</p>
       )}
     </div>
   );
