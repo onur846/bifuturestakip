@@ -105,7 +105,6 @@ export default function Home() {
         }
       });
 
-      // ✅ Sort by biggest 10-second % change (absolute), highest at top
       const sorted = result.sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
       setDisplayCoins(sorted);
     }, 10000);
@@ -128,7 +127,7 @@ export default function Home() {
           textAlign: 'center',
           color: '#00e676'
         }}>
-          📊 Binance Futures – Biggest 10s Movers First (±3% Alert)
+          📊 Binance Futures – Biggest 10s Movers (±3% Alert + Go)
         </h1>
 
         <audio ref={audioRef} src="/alert.mp3" />
@@ -169,7 +168,22 @@ export default function Home() {
                   >
                     <td style={{ padding: '10px 0' }}>{coin.symbol}</td>
                     <td style={{ padding: '10px 0' }}>{coin.currentPrice}</td>
-                    <td style={{ padding: '10px 0' }}>{coin.changePercent}%</td>
+                    <td style={{ padding: '10px 0' }}>
+                      {coin.changePercent}%{' '}
+                      <a
+                        href={`https://www.binance.com/en/futures/${coin.symbol}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          color: '#00bcd4',
+                          marginLeft: 8,
+                          textDecoration: 'underline',
+                          fontSize: 13
+                        }}
+                      >
+                        Go
+                      </a>
+                    </td>
                   </tr>
                 ))}
               </tbody>
