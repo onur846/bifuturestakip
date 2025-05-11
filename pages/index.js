@@ -1,28 +1,61 @@
 // pages/index.js
 import { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const getTopCoins = async () => {
+  try {
+    const response = await axios.get("https://fapi.binance.com/fapi/v1/ticker/24hr");
+    const coins = response.data;
+
+    // Sort by volume and take the top 200
+    const topCoins = coins.sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume)).slice(0, 200);
+    
+    return topCoins;
+  } catch (error) {
+    console.error('Error fetching top coins:', error);
+    return [];
+  }
+};
 
 export default function Home() {
   const [coins, setCoins] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(null); // Track last update time
+  const [ws, setWs] = useState(null);
 
   useEffect(() => {
+    const fetchTopCoins = async () => {
+      const topCoins = await getTopCoins();
+      setCoins(topCoins);
+    };
+
+    fetchTopCoins();
+
     const webSocket = new WebSocket('wss://fstream.binance.com/ws');
 
     webSocket.onopen = () => {
       console.log('WebSocket connection established');
-      webSocket.send(JSON.stringify({ method: 'SUBSCRIBE', params: ['!ticker@arr'], id: 1 }));
+      // Subscribe to the ticker updates for the coins we're displaying
+      const coinSymbols = coins.map(coin => coin.symbol.toLowerCase() + '@ticker');
+      webSocket.send(JSON.stringify({ method: 'SUBSCRIBE', params: [...coinSymbols], id: 1 }));
     };
 
     webSocket.onmessage = (event) => {
       const msg = JSON.parse(event.data);
 
-      if (Array.isArray(msg)) {
-        const updatedCoins = msg.filter(coin => {
-          const priceChangePercent = parseFloat(coin.p);
-          return Math.abs(priceChangePercent) >= 3;
+      if (msg.e === 'ticker') {
+        // Update specific coin data
+        setCoins(coins => {
+          return coins.map(coin => {
+            if (coin.symbol === msg.s) {
+              return {
+                ...coin,
+                lastPrice: msg.c,
+                priceChange: msg.p,
+                priceChangePercent: msg.P
+              };
+            }
+            return coin;
+          });
         });
-        setCoins(updatedCoins);
-        setLastUpdated(Date.now()); // Update last updated time
       }
     };
 
@@ -35,30 +68,20 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // This will run every 10 seconds and can be used to log updates
-      console.log('Checking for updates...');
-      setLastUpdated(Date.now());
-    }, 10000); // 10 seconds
-
-    return () => clearInterval(interval); // Clean up interval on unmount
-  }, []);
-
   return (
     <div>
       <h1>Cryptocurrency Tracker (Binance Futures)</h1>
-      <p>Last updated: {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : 'Loading...'}</p>
       {coins.length > 0 ? (
         <ul>
           {coins.map(coin => (
-            <li key={coin.s}>
-              {coin.s}: {coin.p} ({coin.P}% change)
+            <li key={coin.symbol}>
+              {coin.symbol}: {coin.lastPrice ? parseFloat(coin.lastPrice).toFixed(2) : 'Loading...'} 
+              ({coin.priceChangePercent ? parseFloat(coin.priceChangePercent).toFixed(2) : 'Loading...'}% change)
             </li>
           ))}
         </ul>
       ) : (
-        <p>No coins with significant changes.</p>
+        <p>Loading top coins...</p>
       )}
     </div>
   );
