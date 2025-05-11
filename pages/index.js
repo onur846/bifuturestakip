@@ -105,7 +105,8 @@ export default function Home() {
         }
       });
 
-      const sorted = result.sort((a, b) => b.quoteVolume - a.quoteVolume);
+      // ✅ Sort by biggest 10-second % change (absolute), highest at top
+      const sorted = result.sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
       setDisplayCoins(sorted);
     }, 10000);
 
@@ -127,7 +128,7 @@ export default function Home() {
           textAlign: 'center',
           color: '#00e676'
         }}>
-          📊 Binance Futures – Real-Time Top 200 (±3% in 10s)
+          📊 Binance Futures – Biggest 10s Movers First (±3% Alert)
         </h1>
 
         <audio ref={audioRef} src="/alert.mp3" />
