@@ -105,7 +105,6 @@ export default function Home() {
         }
       });
 
-      // Sort by quoteVolume again for display
       const sorted = result.sort((a, b) => b.quoteVolume - a.quoteVolume);
       setDisplayCoins(sorted);
     }, 10000);
@@ -114,47 +113,69 @@ export default function Home() {
   }, [coins]);
 
   return (
-    <div style={{ padding: 20, fontFamily: 'Arial' }}>
-      <h1>📊 Binance Futures – Real-Time Top 200 by USDT Volume (±3% in 10s)</h1>
-      <audio ref={audioRef} src="/alert.mp3" />
-      {displayCoins.length === 0 ? (
-        <p>Loading live price data...</p>
-      ) : (
-        <table
-          style={{
-            width: '100%',
-            marginTop: 20,
-            borderCollapse: 'collapse',
-          }}
-        >
-          <thead>
-            <tr>
-              <th align="left">Coin</th>
-              <th align="left">Price (USDT)</th>
-              <th align="left">% Change (10s)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayCoins.map((coin) => (
-              <tr
-                key={coin.symbol}
-                style={{
-                  color:
-                    Math.abs(coin.changePercent) >= 3
-                      ? coin.changePercent > 0
-                        ? 'green'
-                        : 'red'
-                      : 'black',
-                }}
-              >
-                <td>{coin.symbol}</td>
-                <td>{coin.currentPrice}</td>
-                <td>{coin.changePercent}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+    <div style={{
+      backgroundColor: '#121212',
+      minHeight: '100vh',
+      padding: '40px 20px',
+      color: '#eee',
+      fontFamily: 'Segoe UI, sans-serif',
+    }}>
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <h1 style={{
+          fontSize: 28,
+          marginBottom: 30,
+          textAlign: 'center',
+          color: '#00e676'
+        }}>
+          📊 Binance Futures – Real-Time Top 200 (±3% in 10s)
+        </h1>
+
+        <audio ref={audioRef} src="/alert.mp3" />
+
+        {displayCoins.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#aaa' }}>
+            Loading live price data...
+          </p>
+        ) : (
+          <div style={{
+            background: '#1e1e1e',
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: '0 0 10px rgba(0,0,0,0.6)'
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #444' }}>
+                  <th style={{ textAlign: 'left', paddingBottom: 10 }}>Coin</th>
+                  <th style={{ textAlign: 'left', paddingBottom: 10 }}>Price (USDT)</th>
+                  <th style={{ textAlign: 'left', paddingBottom: 10 }}>% Change (10s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayCoins.map((coin) => (
+                  <tr
+                    key={coin.symbol}
+                    style={{
+                      backgroundColor: Math.abs(coin.changePercent) >= 3
+                        ? (coin.changePercent > 0 ? '#003c1f' : '#3c0000')
+                        : 'transparent',
+                      color: Math.abs(coin.changePercent) >= 3
+                        ? (coin.changePercent > 0 ? '#00e676' : '#ff5252')
+                        : '#ccc',
+                      transition: 'background 0.3s',
+                      cursor: 'default'
+                    }}
+                  >
+                    <td style={{ padding: '10px 0' }}>{coin.symbol}</td>
+                    <td style={{ padding: '10px 0' }}>{coin.currentPrice}</td>
+                    <td style={{ padding: '10px 0' }}>{coin.changePercent}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
