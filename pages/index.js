@@ -4,8 +4,8 @@ import axios from 'axios';
 export default function Home() {
   const [coins, setCoins] = useState([]);
   const [displayCoins, setDisplayCoins] = useState([]);
-  const priceRefs = useRef({});      // Live price
-  const basePrices = useRef({});     // Price 10 seconds ago
+  const priceRefs = useRef({});
+  const basePrices = useRef({});
   const audioRef = useRef(null);
   const wsRef = useRef(null);
 
@@ -21,11 +21,16 @@ export default function Home() {
       .map(s => s.symbol);
 
     const tickers = await axios.get("https://fapi.binance.com/fapi/v1/ticker/24hr");
+
     const top = tickers.data
-      .filter(t => activeSymbols.includes(t.symbol))
+      .filter(t =>
+        activeSymbols.includes(t.symbol) &&
+        t.volume && !isNaN(parseFloat(t.volume))
+      )
       .sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume))
       .slice(0, 200);
 
+    console.log("Top Futures Coins by Volume:", top.map(c => c.symbol)); // Debug: check for BTCUSDT
     setCoins(top);
   };
 
@@ -77,7 +82,8 @@ export default function Home() {
           result.push({
             symbol,
             currentPrice: current.toFixed(4),
-            changePercent: roundedChange
+            changePercent: roundedChange,
+            volume: parseFloat(coin.volume) || 0
           });
 
           if (Math.abs(change) >= 3) {
@@ -90,15 +96,17 @@ export default function Home() {
         }
       });
 
-      setDisplayCoins(result);
-    }, 10000); // every 10s
+      // Sort again to preserve top-volume display order
+      const sorted = result.sort((a, b) => b.volume - a.volume);
+      setDisplayCoins(sorted);
+    }, 10000);
 
     return () => clearInterval(updateEvery10s);
   }, [coins]);
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h1>📊 Binance Futures – Real-Time ±3% Alert (10s Change)</h1>
+      <h1>📊 Binance Futures – Realtime Top 200 by Volume (±3% in 10s)</h1>
       <audio ref={audioRef} src="/alert.mp3" />
       {displayCoins.length === 0 ? (
         <p>Loading live price data...</p>
