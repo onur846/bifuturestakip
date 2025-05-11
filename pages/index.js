@@ -1,4 +1,4 @@
-// index.js (with 🔥 Volatility + ⚡ Momentum indicators)
+// index.js (with ⚡ for positive momentum and 🔻 for negative)
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 
@@ -8,8 +8,8 @@ export default function Home() {
   const [followedCoins, setFollowedCoins] = useState([]);
   const priceRefs = useRef({});
   const base10s = useRef({});
-  const base30s = useRef({});
-  const base60s = useRef({});
+  const track30s = useRef({});
+  const track60s = useRef({});
   const volatilityTrack = useRef({});
   const base15mVolume = useRef({});
   const audioRef = useRef(null);
@@ -46,11 +46,18 @@ export default function Home() {
         const symbol = msg.data.s;
         priceRefs.current[symbol] = price;
 
+        if (!track30s.current[symbol]) track30s.current[symbol] = [];
+        if (!track60s.current[symbol]) track60s.current[symbol] = [];
+
+        track30s.current[symbol].push(price);
+        track60s.current[symbol].push(price);
+
+        if (track30s.current[symbol].length > 3) track30s.current[symbol].shift();
+        if (track60s.current[symbol].length > 6) track60s.current[symbol].shift();
+
         if (!volatilityTrack.current[symbol]) volatilityTrack.current[symbol] = [];
         volatilityTrack.current[symbol].push(price);
-        if (volatilityTrack.current[symbol].length > 30) {
-          volatilityTrack.current[symbol].shift();
-        }
+        if (volatilityTrack.current[symbol].length > 30) volatilityTrack.current[symbol].shift();
       }
     };
     return () => ws.close();
@@ -79,16 +86,16 @@ export default function Home() {
         const symbol = coin.symbol;
         const current = priceRefs.current[symbol];
         const base10 = base10s.current[symbol];
-        const base30 = base30s.current[symbol];
-        const base60 = base60s.current[symbol];
+        const track30 = track30s.current[symbol];
+        const track60 = track60s.current[symbol];
         const currentVolume = parseFloat(coin.quoteVolume);
         const baseVol = base15mVolume.current[symbol];
 
         let change10s = null, change30s = null, change60s = null, volumeChange = null;
 
         if (current && base10) change10s = ((current - base10) / base10) * 100;
-        if (current && base30) change30s = ((current - base30) / base30) * 100;
-        if (current && base60) change60s = ((current - base60) / base60) * 100;
+        if (track30 && track30.length > 0) change30s = ((current - track30[0]) / track30[0]) * 100;
+        if (track60 && track60.length > 0) change60s = ((current - track60[0]) / track60[0]) * 100;
         if (baseVol && currentVolume) volumeChange = ((currentVolume - baseVol) / baseVol) * 100;
 
         let isHotVolume = volumeChange >= 20;
@@ -103,9 +110,14 @@ export default function Home() {
           if (spike >= 1.5) isVolatile = true;
         }
 
-        let isMomentum = false;
+        let isMomentumUp = false;
         if (change10s > 0 && change30s > change10s && change60s > change30s) {
-          isMomentum = true;
+          isMomentumUp = true;
+        }
+
+        let isMomentumDown = false;
+        if (change10s < 0 && change30s < change10s && change60s < change30s) {
+          isMomentumDown = true;
         }
 
         if (current && base10) {
@@ -118,15 +130,14 @@ export default function Home() {
             volumeChange: volumeChange?.toFixed(2),
             isHotVolume,
             isVolatile,
-            isMomentum
+            isMomentumUp,
+            isMomentumDown
           });
 
           if (Math.abs(change10s) >= 3) audioRef.current?.play();
         }
 
         if (current) base10s.current[symbol] = current;
-        if (!base30s.current[symbol]) base30s.current[symbol] = current;
-        if (!base60s.current[symbol]) base60s.current[symbol] = current;
       });
 
       const sorted = result.sort((a, b) => {
@@ -170,7 +181,7 @@ export default function Home() {
                   }}
                 >
                   <td>
-                    {coin.symbol} {coin.isVolatile ? '🔥' : ''} {coin.isMomentum ? '⚡' : ''}
+                    {coin.symbol} {coin.isVolatile ? '🔥' : ''} {coin.isMomentumUp ? '⚡' : ''} {coin.isMomentumDown ? '🔻' : ''}
                   </td>
                   <td>{coin.currentPrice}</td>
                   <td>{coin.change10s}%</td>
