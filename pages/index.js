@@ -10,28 +10,35 @@ export default function Home() {
   const wsRef = useRef(null);
 
   const fetchCoins = async () => {
-    const info = await axios.get("https://fapi.binance.com/fapi/v1/exchangeInfo");
+    try {
+      const [exchangeInfoRes, tickersRes] = await Promise.all([
+        axios.get('https://fapi.binance.com/fapi/v1/exchangeInfo'),
+        axios.get('https://fapi.binance.com/fapi/v1/ticker/24hr'),
+      ]);
 
-    const activeSymbols = info.data.symbols
-      .filter(s =>
-        s.contractType === "PERPETUAL" &&
-        s.symbol.endsWith("USDT") &&
-        s.status === "TRADING"
-      )
-      .map(s => s.symbol);
+      const activeSymbols = exchangeInfoRes.data.symbols
+        .filter(
+          (s) =>
+            s.contractType === 'PERPETUAL' &&
+            s.symbol.endsWith('USDT') &&
+            s.status === 'TRADING'
+        )
+        .map((s) => s.symbol);
 
-    const tickers = await axios.get("https://fapi.binance.com/fapi/v1/ticker/24hr");
+      const tickers = tickersRes.data
+        .filter(
+          (t) =>
+            activeSymbols.includes(t.symbol) &&
+            t.volume &&
+            !isNaN(parseFloat(t.volume))
+        )
+        .sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume))
+        .slice(0, 200);
 
-    const top = tickers.data
-      .filter(t =>
-        activeSymbols.includes(t.symbol) &&
-        t.volume && !isNaN(parseFloat(t.volume))
-      )
-      .sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume))
-      .slice(0, 200);
-
-    console.log("Top Futures Coins by Volume:", top.map(c => c.symbol)); // Debug: check for BTCUSDT
-    setCoins(top);
+      setCoins(tickers);
+    } catch (error) {
+      console.error('Error fetching coin data:', error);
+    }
   };
 
   useEffect(() => {
@@ -41,16 +48,18 @@ export default function Home() {
   useEffect(() => {
     if (coins.length === 0) return;
 
-    const ws = new WebSocket("wss://fstream.binance.com/stream");
+    const ws = new WebSocket('wss://fstream.binance.com/stream');
     wsRef.current = ws;
 
     const streams = coins.map((c) => `${c.symbol.toLowerCase()}@markPrice`);
     ws.onopen = () => {
-      ws.send(JSON.stringify({
-        method: "SUBSCRIBE",
-        params: streams,
-        id: 1
-      }));
+      ws.send(
+        JSON.stringify({
+          method: 'SUBSCRIBE',
+          params: streams,
+          id: 1,
+        })
+      );
     };
 
     ws.onmessage = (event) => {
@@ -62,7 +71,7 @@ export default function Home() {
       }
     };
 
-    ws.onclose = () => console.log("WebSocket closed");
+    ws.onclose = () => console.log('WebSocket closed');
     return () => ws.close();
   }, [coins]);
 
@@ -83,7 +92,7 @@ export default function Home() {
             symbol,
             currentPrice: current.toFixed(4),
             changePercent: roundedChange,
-            volume: parseFloat(coin.volume) || 0
+            volume: parseFloat(coin.volume) || 0,
           });
 
           if (Math.abs(change) >= 3) {
@@ -96,7 +105,6 @@ export default function Home() {
         }
       });
 
-      // Sort again to preserve top-volume display order
       const sorted = result.sort((a, b) => b.volume - a.volume);
       setDisplayCoins(sorted);
     }, 10000);
@@ -105,13 +113,19 @@ export default function Home() {
   }, [coins]);
 
   return (
-    <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h1>📊 Binance Futures – Realtime Top 200 by Volume (±3% in 10s)</h1>
+    <div style={{ padding: 20, fontFamily: 'Arial' }}>
+      <h1>📊 Binance Futures – Real-Time Top 200 by Volume (±3% in 10s)</h1>
       <audio ref={audioRef} src="/alert.mp3" />
       {displayCoins.length === 0 ? (
         <p>Loading live price data...</p>
       ) : (
-        <table style={{ width: "100%", marginTop: 20, borderCollapse: "collapse" }}>
+        <table
+          style={{
+            width: '100%',
+            marginTop: 20,
+            borderCollapse: 'collapse',
+          }}
+        >
           <thead>
             <tr>
               <th align="left">Coin</th>
@@ -121,7 +135,17 @@ export default function Home() {
           </thead>
           <tbody>
             {displayCoins.map((coin) => (
-              <tr key={coin.symbol} style={{ color: Math.abs(coin.changePercent) >= 3 ? (coin.changePercent > 0 ? 'green' : 'red') : 'black' }}>
+              <tr
+                key={coin.symbol}
+                style={{
+                  color:
+                    Math.abs(coin.changePercent) >= 3
+                      ? coin.changePercent > 0
+                        ? 'green'
+                        : 'red'
+                      : 'black',
+                }}
+              >
                 <td>{coin.symbol}</td>
                 <td>{coin.currentPrice}</td>
                 <td>{coin.changePercent}%</td>
