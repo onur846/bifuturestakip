@@ -29,10 +29,10 @@ export default function Home() {
         .filter(
           (t) =>
             activeSymbols.includes(t.symbol) &&
-            t.volume &&
-            !isNaN(parseFloat(t.volume))
+            t.quoteVolume &&
+            !isNaN(parseFloat(t.quoteVolume))
         )
-        .sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume))
+        .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
         .slice(0, 200);
 
       setCoins(tickers);
@@ -92,7 +92,7 @@ export default function Home() {
             symbol,
             currentPrice: current.toFixed(4),
             changePercent: roundedChange,
-            volume: parseFloat(coin.volume) || 0,
+            quoteVolume: parseFloat(coin.quoteVolume) || 0,
           });
 
           if (Math.abs(change) >= 3) {
@@ -105,7 +105,8 @@ export default function Home() {
         }
       });
 
-      const sorted = result.sort((a, b) => b.volume - a.volume);
+      // Sort by quoteVolume again for display
+      const sorted = result.sort((a, b) => b.quoteVolume - a.quoteVolume);
       setDisplayCoins(sorted);
     }, 10000);
 
@@ -114,7 +115,7 @@ export default function Home() {
 
   return (
     <div style={{ padding: 20, fontFamily: 'Arial' }}>
-      <h1>📊 Binance Futures – Real-Time Top 200 by Volume (±3% in 10s)</h1>
+      <h1>📊 Binance Futures – Real-Time Top 200 by USDT Volume (±3% in 10s)</h1>
       <audio ref={audioRef} src="/alert.mp3" />
       {displayCoins.length === 0 ? (
         <p>Loading live price data...</p>
