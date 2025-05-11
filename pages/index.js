@@ -4,24 +4,28 @@ import axios from 'axios';
 export default function Home() {
   const [coins, setCoins] = useState([]);
   const [displayCoins, setDisplayCoins] = useState([]);
-  const priceRefs = useRef({});      // Holds live price
-  const basePrices = useRef({});     // Holds price from 10 seconds ago
+  const priceRefs = useRef({});      // Live price
+  const basePrices = useRef({});     // Price 10 seconds ago
   const audioRef = useRef(null);
   const wsRef = useRef(null);
 
-  // Fetch top 200 USDT futures coins
   const fetchCoins = async () => {
     const info = await axios.get("https://fapi.binance.com/fapi/v1/exchangeInfo");
-    const symbols = info.data.symbols
-      .filter((s) => s.contractType === "PERPETUAL" && s.symbol.endsWith("USDT"))
-      .map((s) => s.symbol);
+
+    const activeSymbols = info.data.symbols
+      .filter(s =>
+        s.contractType === "PERPETUAL" &&
+        s.symbol.endsWith("USDT") &&
+        s.status === "TRADING"
+      )
+      .map(s => s.symbol);
 
     const tickers = await axios.get("https://fapi.binance.com/fapi/v1/ticker/24hr");
     const top = tickers.data
-      .filter((t) => symbols.includes(t.symbol))
+      .filter(t => activeSymbols.includes(t.symbol))
       .sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume))
       .slice(0, 200);
-    
+
     setCoins(top);
   };
 
@@ -49,7 +53,6 @@ export default function Home() {
       if (msg.data && msg.data.s && msg.data.p) {
         const symbol = msg.data.s;
         const price = parseFloat(msg.data.p);
-
         priceRefs.current[symbol] = price;
       }
     };
@@ -58,7 +61,6 @@ export default function Home() {
     return () => ws.close();
   }, [coins]);
 
-  // Every 10 seconds: snapshot base prices and calculate change
   useEffect(() => {
     const updateEvery10s = setInterval(() => {
       const result = [];
@@ -83,21 +85,20 @@ export default function Home() {
           }
         }
 
-        // Update base price to current for next 10s window
         if (current) {
           basePrices.current[symbol] = current;
         }
       });
 
       setDisplayCoins(result);
-    }, 10000); // 10 seconds
+    }, 10000); // every 10s
 
     return () => clearInterval(updateEvery10s);
   }, [coins]);
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h1>📊 Binance Futures – 10s Live Change Tracker (±3%)</h1>
+      <h1>📊 Binance Futures – Real-Time ±3% Alert (10s Change)</h1>
       <audio ref={audioRef} src="/alert.mp3" />
       {displayCoins.length === 0 ? (
         <p>Loading live price data...</p>
@@ -105,9 +106,9 @@ export default function Home() {
         <table style={{ width: "100%", marginTop: 20, borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ textAlign: "left" }}>Coin</th>
-              <th style={{ textAlign: "left" }}>Price (USDT)</th>
-              <th style={{ textAlign: "left" }}>% Change (10s)</th>
+              <th align="left">Coin</th>
+              <th align="left">Price (USDT)</th>
+              <th align="left">% Change (10s)</th>
             </tr>
           </thead>
           <tbody>
