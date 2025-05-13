@@ -1,7 +1,8 @@
-/* styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ekstra özelleştirme (isteğe bağlı) */
 body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 20px;
-  background-color: #f5f5f5;
+  @apply bg-zinc-950 text-white;
 }
