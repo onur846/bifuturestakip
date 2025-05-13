@@ -1,24 +1,16 @@
 {
-  "name": "bifuturestakip1",
+  "name": "crypto-tracker",
   "version": "1.0.0",
-  "private": true,
+  "main": "index.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
-    "axios": "^1.6.8",
-    "clsx": "^2.1.0",
-    "framer-motion": "^10.15.1",
-    "lucide-react": "^0.263.0",
-    "next": "^14.1.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "tailwindcss": "^3.4.1"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.31"
+    "axios": "^0.21.1",
+    "next": "^11.0.0",
+    "react": "^17.0.0",
+    "react-dom": "^17.0.0"
   }
 }
