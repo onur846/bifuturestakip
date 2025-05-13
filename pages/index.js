@@ -1,4 +1,4 @@
-// index.js (with ⚡ for positive momentum and 🔻 for negative)
+// index.js (with 10s summary count of up/down coins)
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 
@@ -6,6 +6,8 @@ export default function Home() {
   const [coins, setCoins] = useState([]);
   const [displayCoins, setDisplayCoins] = useState([]);
   const [followedCoins, setFollowedCoins] = useState([]);
+  const [upCount, setUpCount] = useState(0);
+  const [downCount, setDownCount] = useState(0);
   const priceRefs = useRef({});
   const base10s = useRef({});
   const track30s = useRef({});
@@ -81,6 +83,8 @@ export default function Home() {
   useEffect(() => {
     const updateEvery10s = setInterval(() => {
       const result = [];
+      let up = 0;
+      let down = 0;
 
       coins.forEach(coin => {
         const symbol = coin.symbol;
@@ -98,6 +102,11 @@ export default function Home() {
         if (track60 && track60.length > 0) change60s = ((current - track60[0]) / track60[0]) * 100;
         if (baseVol && currentVolume) volumeChange = ((currentVolume - baseVol) / baseVol) * 100;
 
+        if (change10s !== null) {
+          if (change10s > 0) up++;
+          else if (change10s < 0) down++;
+        }
+
         let isHotVolume = volumeChange >= 20;
 
         let isVolatile = false;
@@ -111,14 +120,10 @@ export default function Home() {
         }
 
         let isMomentumUp = false;
-        if (change10s > 0 && change30s > change10s && change60s > change30s) {
-          isMomentumUp = true;
-        }
+        if (change10s > 0 && change30s > change10s && change60s > change30s) isMomentumUp = true;
 
         let isMomentumDown = false;
-        if (change10s < 0 && change30s < change10s && change60s < change30s) {
-          isMomentumDown = true;
-        }
+        if (change10s < 0 && change30s < change10s && change60s < change30s) isMomentumDown = true;
 
         if (current && base10) {
           result.push({
@@ -140,6 +145,9 @@ export default function Home() {
         if (current) base10s.current[symbol] = current;
       });
 
+      setUpCount(up);
+      setDownCount(down);
+
       const sorted = result.sort((a, b) => {
         if (b.isHotVolume && !a.isHotVolume) return 1;
         if (a.isHotVolume && !b.isHotVolume) return -1;
@@ -156,6 +164,9 @@ export default function Home() {
     <div style={{ display: 'flex', backgroundColor: '#121212', color: '#eee', fontFamily: 'Segoe UI', padding: 20 }}>
       <div style={{ flex: 1 }}>
         <h1 style={{ color: '#00e676', textAlign: 'center' }}>📈 Binance Futures – Realtime Monitor</h1>
+        <p style={{ textAlign: 'center', marginBottom: 20 }}>
+          ⬆️ Yükselen Coinler: <strong>{upCount}</strong> | ⬇️ Düşen Coinler: <strong>{downCount}</strong>
+        </p>
         <audio ref={audioRef} src="/alert.mp3" />
 
         <div style={{ maxWidth: 900, margin: '0 auto', background: '#1e1e1e', padding: 20, borderRadius: 12 }}>
