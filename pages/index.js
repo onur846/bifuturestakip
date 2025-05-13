@@ -1,6 +1,8 @@
-// index.js (with 10s summary count of up/down coins)
+// index.js (modern UI + UX: Tailwind + ShadCN + Lucide Icons + Framer Motion)
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
+import { motion } from 'framer-motion';
+import { ArrowUp, ArrowDown, Flame, Lightning, TrendingDown } from 'lucide-react';
 
 export default function Home() {
   const [coins, setCoins] = useState([]);
@@ -161,47 +163,55 @@ export default function Home() {
   }, [coins]);
 
   return (
-    <div style={{ display: 'flex', backgroundColor: '#121212', color: '#eee', fontFamily: 'Segoe UI', padding: 20 }}>
-      <div style={{ flex: 1 }}>
-        <h1 style={{ color: '#00e676', textAlign: 'center' }}>📈 Binance Futures – Realtime Monitor</h1>
-        <p style={{ textAlign: 'center', marginBottom: 20 }}>
-          ⬆️ Yükselen Coinler: <strong>{upCount}</strong> | ⬇️ Düşen Coinler: <strong>{downCount}</strong>
-        </p>
-        <audio ref={audioRef} src="/alert.mp3" />
+    <div className="bg-zinc-950 text-white min-h-screen p-4">
+      <audio ref={audioRef} src="/alert.mp3" />
 
-        <div style={{ maxWidth: 900, margin: '0 auto', background: '#1e1e1e', padding: 20, borderRadius: 12 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold text-center mb-4 text-lime-400">
+          Binance Futures Realtime Monitor
+        </h1>
+
+        <div className="flex justify-center gap-6 mb-6">
+          <div className="bg-zinc-800 px-4 py-2 rounded-lg flex items-center gap-2">
+            <ArrowUp className="text-green-400" size={20} />
+            <span className="text-sm">Yükselen: <strong>{upCount}</strong></span>
+          </div>
+          <div className="bg-zinc-800 px-4 py-2 rounded-lg flex items-center gap-2">
+            <ArrowDown className="text-red-400" size={20} />
+            <span className="text-sm">Düşen: <strong>{downCount}</strong></span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto bg-zinc-900 rounded-xl">
+          <table className="w-full table-auto text-sm">
             <thead>
-              <tr style={{ borderBottom: '1px solid #444' }}>
-                <th align="left">Coin</th>
-                <th align="left">Price</th>
-                <th align="left">Δ10s</th>
-                <th align="left">Δ30s</th>
-                <th align="left">Δ60s</th>
-                <th align="left">Volume Δ</th>
-                <th align="left">Follow</th>
+              <tr className="text-left border-b border-zinc-700">
+                <th className="px-3 py-2">Coin</th>
+                <th className="px-3">Price</th>
+                <th className="px-3">Δ10s</th>
+                <th className="px-3">Δ30s</th>
+                <th className="px-3">Δ60s</th>
+                <th className="px-3">Vol.Δ</th>
+                <th className="px-3">Follow</th>
               </tr>
             </thead>
             <tbody>
               {displayCoins.map((coin) => (
-                <tr
-                  key={coin.symbol}
-                  style={{
-                    backgroundColor: Math.abs(coin.change10s) >= 3 ? (coin.change10s > 0 ? '#003c1f' : '#3c0000') : 'transparent',
-                    color: Math.abs(coin.change10s) >= 3 ? (coin.change10s > 0 ? '#00e676' : '#ff5252') : '#ccc'
-                  }}
-                >
-                  <td>
-                    {coin.symbol} {coin.isVolatile ? '🔥' : ''} {coin.isMomentumUp ? '⚡' : ''} {coin.isMomentumDown ? '🔻' : ''}
+                <tr key={coin.symbol} className="border-b border-zinc-800 hover:bg-zinc-800 transition">
+                  <td className="px-3 py-2 font-mono">
+                    {coin.symbol} {coin.isVolatile && <Flame className="inline text-orange-500" size={16} />} {coin.isMomentumUp && <Lightning className="inline text-green-400" size={16} />} {coin.isMomentumDown && <TrendingDown className="inline text-red-400" size={16} />}
                   </td>
-                  <td>{coin.currentPrice}</td>
-                  <td>{coin.change10s}%</td>
-                  <td>{coin.change30s || '–'}%</td>
-                  <td>{coin.change60s || '–'}%</td>
-                  <td>{coin.volumeChange || '–'}%</td>
-                  <td>
-                    <button onClick={() => toggleFollow(coin.symbol)} style={{ cursor: 'pointer' }}>
-                      {followedCoins.includes(coin.symbol) ? '✅' : '📌'}
+                  <td className="px-3">{coin.currentPrice}</td>
+                  <td className="px-3">{coin.change10s}%</td>
+                  <td className="px-3">{coin.change30s}%</td>
+                  <td className="px-3">{coin.change60s}%</td>
+                  <td className="px-3">{coin.volumeChange}%</td>
+                  <td className="px-3">
+                    <button
+                      onClick={() => toggleFollow(coin.symbol)}
+                      className="text-xs px-2 py-1 rounded bg-zinc-700 hover:bg-zinc-600"
+                    >
+                      {followedCoins.includes(coin.symbol) ? 'Takip Ediliyor' : 'Takip Et'}
                     </button>
                   </td>
                 </tr>
@@ -209,20 +219,27 @@ export default function Home() {
             </tbody>
           </table>
         </div>
-      </div>
 
-      {followedCoins.length > 0 && (
-        <div style={{ width: 250, marginLeft: 20, background: '#1e1e1e', padding: 16, borderRadius: 12 }}>
-          <h3 style={{ color: '#00bcd4' }}>📌 Takip Listesi</h3>
-          <ul>
-            {followedCoins.map(symbol => (
-              <li key={symbol}>
-                <a href={`https://www.binance.com/en/futures/${symbol}`} target="_blank" rel="noreferrer" style={{ color: '#eee' }}>{symbol}</a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {followedCoins.length > 0 && (
+          <div className="mt-8 bg-zinc-900 p-4 rounded-xl">
+            <h3 className="text-lg mb-2 text-cyan-400">📌 Takip Listesi</h3>
+            <ul className="space-y-1 text-sm">
+              {followedCoins.map(symbol => (
+                <li key={symbol}>
+                  <a
+                    href={`https://www.binance.com/en/futures/${symbol}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-white hover:underline"
+                  >
+                    {symbol}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
